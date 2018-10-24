@@ -1,0 +1,19 @@
+{
+  "name": "smartshack",
+  "version": "1.0.0",
+  "description": "Lua user-libraries for the CBus 5500SHAC automation controller",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/glenharris/smartshack.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/glenharris/smartshack/issues"
+  },
+  "homepage": "https://github.com/glenharris/smartshack#readme"
+}
