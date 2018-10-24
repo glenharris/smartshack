@@ -40,8 +40,8 @@ function CBus.isEqualCBusGa(first, second)
   end
   return false
 end
-function CBus.getLevel(cbusGa, defaultValue)
-  CBus.logger:trace('getLevel %s %d', table.concat(cbusGa,'/'), defaultValue) 
+function CBus.getLevelWithDefault(cbusGa, defaultValue)
+  CBus.logger:trace('getLevelWithDefault %s %d', table.concat(cbusGa,'/'), defaultValue) 
 	local status, level
   if ( cbusGa[2]==202 and cbusGa[1] == 0 ) then
 	  status, level = pcall(function () return GetTriggerLevel(cbusGa[3]) end )
@@ -79,7 +79,7 @@ function CBus.setAutoLevel(cbusGa)
 end
 function CBus.setAutoLevelIfAutoLevel(cbusGa, testLevel)
   CBus.logger:debug('setAutoLevelIfAutoLevel %s', table.concat(cbusGa,'/'))
-  local currentLevel = CBus.getLevel(cbusGa,0)
+  local currentLevel = CBus.getLevelWithDefault(cbusGa,0)
   local isMatch = false
   local isAutoLevel = false
   if ( currentLevel) then
@@ -100,7 +100,7 @@ function CBus.setAutoLevelIfAutoLevel(cbusGa, testLevel)
 end
 function CBus.setLevelIfAutoLevel(cbusGa, level, testLevel)
   CBus.logger:debug('setLevelIfAutoLevel %s %d', table.concat(cbusGa,'/'), level)
-  local currentLevel = CBus.getLevel(cbusGa,0)
+  local currentLevel = CBus.getLevelWithDefault(cbusGa,0)
   local isMatch = false
   if ( currentLevel) then
     if ( currentLevel == CBus.AUTO_LEVEL ) then
@@ -128,7 +128,7 @@ function CBus.pulseMultipleAutoLevel(cbusGas, durationSeconds)
     CBus.setLevelIfAutoLevel(cbusGa, 0)
   end
 end
-function CBus.getTriggerLevel(triggerId, defaultValue)
+function CBus.getTriggerLevelWithDefault(triggerId, defaultValue)
   CBus.logger:trace('getTriggerLevel %d %d', triggerId, defaultValue) 
 	local status, level = pcall(function () return GetTriggerLevel(triggerId) end )
   if ( status ) then
@@ -138,7 +138,7 @@ function CBus.getTriggerLevel(triggerId, defaultValue)
 end
 
 function CBus.changeTriggerValue(triggerId, delta, minValue, maxValue, timeoutValue, timeoutSeconds)
-  local currentTrigger = CBus.getTriggerLevel(triggerId, 0)
+  local currentTrigger = CBus.getTriggerLevelWithDefault(triggerId, 0)
   CBus.logger:debug('changeTriggerValue %d %d %d (%d-%d) %d after %d', triggerId, currentTrigger, delta, minValue, maxValue, timeoutValue, timeoutSeconds)
   local numSeconds = 10
   local nextTrigger = currentTrigger + delta
@@ -156,7 +156,7 @@ function CBus.changeTriggerValue(triggerId, delta, minValue, maxValue, timeoutVa
   if ( nextTrigger ~= timeoutValue ) then
     os.sleep(numSeconds)
       --Check to see if we have changed during this time
-    currentTrigger = GetTriggerLevel(triggerId)
+    currentTrigger = CBus.getTriggerLevelWithDefault(triggerId, 0)
     if ( currentTrigger == nextTrigger) then
       CBus.logger:debug('toggleTrigger idle', nextTrigger)
       SetTriggerLevel(triggerId, CBus.TIMEOUT_LEVEL)
