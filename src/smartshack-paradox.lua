@@ -1,124 +1,3 @@
---[[
-local Check = {}
-local function expand(format, arguments)
-  local value = table.remove(arguments, 1)
-  if ( value == nil ) then
-    return '<nil>'
-  end
-  return string.format(format, value)
-end
-function Check.getMessage(caller, message, ...)
-  if ( not caller ) then
-    error('Invalid caller')
-  end
-  local returnValue = caller
-  
-  local arguments = {...}
-  if ( message ) then
-    returnValue = returnValue .. ': ' .. message:gsub('(%%%w)', function (match) return expand(match, arguments) end )
-  end
-  return returnValue
-end
-function Check.argument(condition, message, ...)
-  if ( not condition ) then
-    error(Check.getMessage('Check.argument', message, ...))
-  end
-end
-function Check.state(condition, message, ...)
-  if ( not condition ) then
-    error(Check.getMessage('Check.state', message, ...))
-  end
-end
-
-local Logger = {}
-function Logger:new(prefix)
-  -- create object if user does not provide one
-  object = {
-    level = 1,
-    prefix = prefix or ''
-  }   
-  setmetatable(object, self)
-  self.__index = self
-  return object
-end
-function Logger:showInfo()
-  self.level = 2
-end
-function Logger:showDebug()
-  self.level = 1
-end
-function Logger:showTrace()
-  self.level = 0
-end
-function Logger:trace(...)
-  if ( self.level < 1 ) then
-    log(Check.getMessage(self.prefix, ...))
-  end
-end
-function Logger:debug(...)
-  if ( self.level < 2 ) then
-    log(Check.getMessage(self.prefix, ...))
-  end
-end
-function Logger:info(...)
-  if ( self.level < 3 ) then
-    log(Check.getMessage(self.prefix, ...))
-  end
-end
-function Logger:warn(...)
-  log('WARN: ' .. Check.getMessage(self.prefix, ...))
-end
-function Logger:warn(...)
-  log('ERROR: ' .. Check.getMessage(self.prefix, ...))
-end
-
-local Cbus = {
-  logger = Logger:new('Cbus')
-}
-function Cbus.getCanonicalGa(cbusGa)
-  local returnValue
-  local inputType = type(cbusGa)
-  if ( inputType == 'table' ) then
-    returnValue = {unpack(cbusGa)}
-    if ( type(cbusGa[1])=='string' ) then
-      returnValue[1] = GetCBusNetworkAddress(cbusGa[1])
-    end
-    if ( type(cbusGa[2])=='string' ) then
-      returnValue[2] = GetCBusApplicationAddress(returnValue[1], cbusGa[2])
-    end
-    if ( type(cbusGa[3])=='string' ) then
-      returnValue[3] = GetCBusGroupAddress(returnValue[1], returnValue[2], cbusGa[3])
-      Check.argument(returnValue[3], 'Invalid group address %s', cbusGa[3])
-    end
-  elseif ( inputType == 'number' ) then
-      returnValue = {0,56, cbusGa}
-  elseif ( inputType == 'string' ) then
-    returnValue = {0,56, GetCBusGroupAddress(0, 56, cbusGa)}
-  end
-  return returnValue
-end
-function Cbus.setLevel(cbusGa, level)
-  Cbus.logger:debug('setLevel %s %d', table.concat(cbusGa,'/'), level) 
-  if ( cbusGa[2]==202 and cbusGa[1] == 0 ) then
-    SetTriggerLevel(cbusGa[3],level)
-  else
-    SetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3],level,0)
-  end
-end
-function Cbus.pulseAutoLevel(cbusGa, durationSeconds)
-  local currentValue = GetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3])
-  if ( currentValue == 0 or currentValue == 254) then
-	  Cbus.logger:debug('pulseAutoLevel %s %d', table.concat(cbusGa,'/'), durationSeconds) 
-    PulseCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3], 254, 0, durationSeconds, 0)
-  else
-    Cbus.logger:trace('pulseAutoLevel ignoring %s %d', table.concat(cbusGa,'/'), durationSeconds) 
-  end
-end
-function Cbus.setAutoLevel(cbusGa)
-  Cbus.logger:debug('setAutoLevel %s', table.concat(cbusGa,'/')) 
-  SetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3],245,0)
-end
---]]
 local Logger = require('user.smartshack-logger')
 local Check = require('user.smartshack-check')
 local Cbus = require('user.smartshack-cbus')
@@ -147,31 +26,49 @@ function Prt3:new(object)
   return object
 end
 
-function Prt3:initialise(port, config)
+function Prt3:initialiseFirst(portPathPrefix, config)
+  if ( not portPathPrefix ) then
+    portPathPrefix = '/dev/ttyUSB'
+    self.logger:warn('Assuming %sx', portPathPrefix)
+  end
+  if ( self:initialise(portPathPrefix .. '0', config) ) then
+    return true
+  end
+  if ( self:initialise(portPathPrefix .. '1', config) ) then
+    return true
+  end
+  if ( self:initialise(portPathPrefix .. '2', config) ) then
+    return true
+  end
+  return false
+end
+
+function Prt3:initialise(portPath, config)
   Check.state(not self.serialPort)
   local serial = require('serial')
   local err
-  local port, err = serial.open('/dev/ttyUSB0', {
+  local port, err = serial.open(portPath, {
     baudrate=57600,
     databits=8,
     stopbits=1,
     parity='none',
     duplex='full'
     })
-  if ( port ) then
-    self.logger:info('opened')
-		port:flush()
-    self.logger:debug('flushed')
-    self.serialPort = port
-    self.config = config
-    self.discoveredZones = {}
-  else 
-    self.logger:warn('Could not open %s',error)
+  if ( not port ) then
+    self.logger:warn('Could not open %s - %s',portPath, err)
+    return false
   end
+  self.logger:info('opened %s', portPath)
+  port:flush()
+  self.logger:debug('flushed')
+  self.serialPort = port
+  self.config = config
+  self.discoveredZones = {}
   self.logger:debug('zones %d', table.maxn(config.zones))
   for unused, zone in pairs(config.zones ) do
     self:queryZoneStatus(zone.index)
   end
+  return true
 end
 
 function Prt3:dispose()
