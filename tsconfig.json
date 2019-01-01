@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+      "outDir": "./dist/out-tsc",
+      "sourceMap": true,
+      "declaration": false,
+      "moduleResolution": "node",
+      "emitDecoratorMetadata": true,
+      "experimentalDecorators": true,
+      "forceConsistentCasingInFileNames": true,
+      "noImplicitReturns": false,
+      "strict": false,
+      "noImplicitAny": false,
+      "noImplicitThis": true,
+      "alwaysStrict": true,
+      "strictNullChecks": false,
+      "noUnusedLocals": false,
+      "target": "es6",
+      "lib": [
+        "es2017",
+        "dom",
+        "esnext.asynciterable"
+      ],
+      "preserveSymlinks": true
+    }
+  }
