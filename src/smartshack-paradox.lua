@@ -1,6 +1,7 @@
 local Logger = require('user.smartshack-logger')
 local Check = require('user.smartshack-check')
 local Cbus = require('user.smartshack-cbus')
+local Channel = require('user.smartshack-channel')
 
 local Prt3 = {
   serialPort = nil,
@@ -16,16 +17,24 @@ local Protocol = {
 	EVENT_GROUP_ZONE_TAMPERED = 2,
 	EVENT_GROUP_ZONE_FIRE_LOOP_TROUBLE = 3,
   }
-function Prt3:new(object)
+function Prt3:new(object, name)
   -- create object if user does not provide one
   object = object or {}   
   setmetatable(object, self)
   self.__index = self
   self.logger = Logger:new('PRT3')
   self.logger:showInfo()
+  self.channel = Channel:new('PRT3:' .. name)
   return object
 end
 
+function Prt3:sendCommand(name, command){
+  self.logger:info('sendCommand %s:%s', name, command)
+  local action = {
+    command,
+  }
+  self.channel:write(action)
+}
 function Prt3:initialiseFirst(portPathPrefix, config)
   if ( not portPathPrefix ) then
     portPathPrefix = '/dev/ttyUSB'
@@ -86,6 +95,13 @@ function Prt3:runEventLoop(maxSeconds)
   --log('time', currentSeconds, finishSeconds)
   local mustRead = false
   while ( (os.time() < finishSeconds) or mustRead ) do
+    local actions = self.channel:readList()
+    if ( #actions > 0 ) then
+      self.logger:info('add %d actions', #actions)
+      for index, action in ipairs(actions) do
+        self:addAction(action)
+      end
+    end
     while ( table.getn(self.writeLineDatas) > 0 ) do
       local writeLine = table.remove(self.writeLineDatas,1) .. self.LINE_TERMINATOR
       self.logger:trace('write %s', writeLine)
@@ -111,6 +127,13 @@ function Prt3:runEventLoop(maxSeconds)
     end
 	end
   self.logger:trace('done')
+end
+function Prt3:addAction(action)
+  if ( action.command ) then
+    self:addWriteLineData(action.command)
+  else
+    self.logger:error('unknown action')
+  end
 end
 function Prt3:addReadData(data)
   local currentRead = self.currentRead .. data
