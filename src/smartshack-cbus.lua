@@ -1,12 +1,12 @@
 local Logger = require('user.smartshack-logger')
 local Check = require('user.smartshack-check')
 
-local CBus = {
-  logger = Logger:new('CBus'),
+local Cbus = {
+  logger = Logger:new('Cbus'),
   AUTO_LEVEL = 254,
   TIMEOUT_LEVEL = 254,
 }
-function CBus.getCanonicalGa(cbusGa)
+function Cbus.getCanonicalGa(cbusGa)
   local returnValue
   local inputType = type(cbusGa)
   if ( inputType == 'table' ) then
@@ -28,7 +28,7 @@ function CBus.getCanonicalGa(cbusGa)
   end
   return returnValue
 end
-function CBus.isEqualCBusGa(first, second)
+function Cbus.isEqualCbusGa(first, second)
   if ( first and second ) then
     if ( #first == 3 and #second == 3 ) then
       return first[1] == second[1]  and first[2] == second[2] and first[3]==second[3]
@@ -40,22 +40,8 @@ function CBus.isEqualCBusGa(first, second)
   end
   return false
 end
-function CBus.getLevelWithDefault(cbusGa, defaultValue)
-  CBus.logger:trace('getLevelWithDefault %s %d', table.concat(cbusGa,'/'), defaultValue) 
-	local status, level
-  if ( cbusGa[2]==202 and cbusGa[1] == 0 ) then
-	  status, level = pcall(function () return GetTriggerLevel(cbusGa[3]) end )
-  else
-	  status, level = pcall(function () return GetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3]) end )
-  end
-  if ( status ) then
-    return level
-  end
-	return defaultValue
-end
-
-function CBus.setLevel(cbusGa, level)
-  CBus.logger:debug('setLevel %s %d', table.concat(cbusGa,'/'), level) 
+function Cbus.setLevel(cbusGa, level)
+  Cbus.logger:debug('setLevel %s %d', table.concat(cbusGa,'/'), level) 
   if ( cbusGa[2]==202 and cbusGa[1] == 0 ) then
     SetTriggerLevel(cbusGa[3],level)
   else
@@ -63,27 +49,27 @@ function CBus.setLevel(cbusGa, level)
   end
 end
 --[[
-function CBus.pulseAutoLevel(cbusGa, durationSeconds)
+function Cbus.pulseAutoLevel(cbusGa, durationSeconds)
   local currentValue = GetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3])
   if ( currentValue == 0 or currentValue == 254) then
-	  CBus.logger:debug('pulseAutoLevel %s %d', table.concat(cbusGa,'/'), durationSeconds) 
+	  Cbus.logger:debug('pulseAutoLevel %s %d', table.concat(cbusGa,'/'), durationSeconds) 
     PulseCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3], 254, 0, durationSeconds, 0)
   else
-    CBus.logger:debug('pulseAutoLevel ignoring %s %d', table.concat(cbusGa,'/'), currentValue) 
+    Cbus.logger:debug('pulseAutoLevel ignoring %s %d', table.concat(cbusGa,'/'), currentValue) 
   end
 end
 ]]--
-function CBus.setAutoLevel(cbusGa)
-  CBus.logger:debug('setAutoLevel %s', table.concat(cbusGa,'/')) 
-  SetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3],CBus.AUTO_LEVEL,0)
+function Cbus.setAutoLevel(cbusGa)
+  Cbus.logger:debug('setAutoLevel %s', table.concat(cbusGa,'/')) 
+  SetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3],Cbus.AUTO_LEVEL,0)
 end
-function CBus.setAutoLevelIfAutoLevel(cbusGa, testLevel)
-  CBus.logger:debug('setAutoLevelIfAutoLevel %s', table.concat(cbusGa,'/'))
-  local currentLevel = CBus.getLevelWithDefault(cbusGa,0)
+function Cbus.setAutoLevelIfAutoLevel(cbusGa, testLevel)
+  Cbus.logger:debug('setAutoLevelIfAutoLevel %s', table.concat(cbusGa,'/'))
+  local currentLevel = GetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3])
   local isMatch = false
   local isAutoLevel = false
   if ( currentLevel) then
-    if ( currentLevel == CBus.AUTO_LEVEL ) then
+    if ( currentLevel == Cbus.AUTO_LEVEL ) then
       -- Do nothing
       isAutoLevel = true
     elseif ( testLevel and currentLevel == testLevel) then
@@ -91,58 +77,50 @@ function CBus.setAutoLevelIfAutoLevel(cbusGa, testLevel)
     end
   end
   if ( isMatch ) then
-    CBus.setLevel(cbusGa,CBus.AUTO_LEVEL)
+    Cbus.setLevel(cbusGa,Cbus.AUTO_LEVEL)
     isAutoLevel = true
   else
-	  CBus.logger:debug('setAutoLevelIfAutoLevel ignoring %s %d %s', table.concat(cbusGa,'/'), currentLevel, testLevel) 
+	  Cbus.logger:debug('setAutoLevelIfAutoLevel ignoring %s %d %s', table.concat(cbusGa,'/'), currentLevel, testLevel) 
   end
   return isAutoLevel
 end
-function CBus.setLevelIfAutoLevel(cbusGa, level, testLevel)
-  CBus.logger:debug('setLevelIfAutoLevel %s %d', table.concat(cbusGa,'/'), level)
-  local currentLevel = CBus.getLevelWithDefault(cbusGa,0)
+function Cbus.setLevelIfAutoLevel(cbusGa, level, testLevel)
+  Cbus.logger:debug('setLevelIfAutoLevel %s %d', table.concat(cbusGa,'/'), level)
+  local currentLevel = GetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3])
   local isMatch = false
   if ( currentLevel) then
-    if ( currentLevel == CBus.AUTO_LEVEL ) then
+    if ( currentLevel == Cbus.AUTO_LEVEL ) then
       isMatch = true
     elseif ( testLevel and currentLevel == testLevel) then
       isMatch = true
     end
   end
   if ( isMatch ) then
-    CBus.setLevel(cbusGa,level)
+    Cbus.setLevel(cbusGa,level)
   else
-	  CBus.logger:debug('setLevelIfAutoLevel ignoring %s %d %s', table.concat(cbusGa,'/'), currentLevel, testLevel) 
+	  Cbus.logger:debug('setLevelIfAutoLevel ignoring %s %d %s', table.concat(cbusGa,'/'), currentLevel, testLevel) 
   end
   return isMatch
 end
 
-function CBus.pulseMultipleAutoLevel(cbusGas, durationSeconds)
-  CBus.logger:debug('pulseMultipleAutoLevel %d %d', #cbusGas, level)
+function Cbus.pulseMultipleAutoLevel(cbusGas, durationSeconds)
+  Cbus.logger:debug('pulseMultipleAutoLevel %d %d', #cbusGas, level)
   -- Switch on, only if off or in autolevel
   for index, cbusGa in ipairs(cbusGas) do
-    CBus.setAutoLevelIfAutoLevel(cbusGa, 0)
+    Cbus.setAutoLevelIfAutoLevel(cbusGa, 0)
   end
   os.sleep(durationSeconds)
   for index, cbusGa in ipairs(cbusGas) do
-    CBus.setLevelIfAutoLevel(cbusGa, 0)
+    Cbus.setLevelIfAutoLevel(cbusGa, 0)
   end
-end
-function CBus.getTriggerLevelWithDefault(triggerId, defaultValue)
-  CBus.logger:trace('getTriggerLevel %d %d', triggerId, defaultValue) 
-	local status, level = pcall(function () return GetTriggerLevel(triggerId) end )
-  if ( status ) then
-    return level
-  end
-	return defaultValue
 end
 
-function CBus.changeTriggerValue(triggerId, delta, minValue, maxValue, timeoutValue, timeoutSeconds)
-  local currentTrigger = CBus.getTriggerLevelWithDefault(triggerId, 0)
-  CBus.logger:debug('changeTriggerValue %d %d %d (%d-%d) %d after %d', triggerId, currentTrigger, delta, minValue, maxValue, timeoutValue, timeoutSeconds)
+function Cbus.changeTriggerValue(triggerId, delta, minValue, maxValue, timeoutValue, timeoutSeconds)
+  local currentTrigger = GetTriggerLevel(triggerId)
+  Cbus.logger:debug('changeTriggerValue %d %d %d (%d-%d) %d after %d', triggerId, currentTrigger, delta, minValue, maxValue, timeoutValue, timeoutSeconds)
   local numSeconds = 10
   local nextTrigger = currentTrigger + delta
-  if ( currentTrigger == CBus.TIMEOUT_LEVEL ) then
+  if ( currentTrigger == Cbus.TIMEOUT_LEVEL ) then
     nextTrigger = timeoutValue
   end
   if ( currentTrigger < minValue ) then
@@ -151,17 +129,17 @@ function CBus.changeTriggerValue(triggerId, delta, minValue, maxValue, timeoutVa
   if ( currentTrigger > maxValue ) then
     nextTrigger = minValue
   end
-  CBus.logger:debug('changeTriggerValue change %d', nextTrigger)
+  Cbus.logger:debug('changeTriggerValue change %d', nextTrigger)
   SetTriggerLevel(triggerId,nextTrigger)
   if ( nextTrigger ~= timeoutValue ) then
     os.sleep(numSeconds)
       --Check to see if we have changed during this time
-    currentTrigger = CBus.getTriggerLevelWithDefault(triggerId, 0)
+    currentTrigger = GetTriggerLevel(triggerId)
     if ( currentTrigger == nextTrigger) then
-      CBus.logger:debug('toggleTrigger idle', nextTrigger)
-      SetTriggerLevel(triggerId, CBus.TIMEOUT_LEVEL)
+      Cbus.logger:debug('toggleTrigger idle', nextTrigger)
+      SetTriggerLevel(triggerId, Cbus.TIMEOUT_LEVEL)
     end
   end
 end
             
-return CBus
+return Cbus
