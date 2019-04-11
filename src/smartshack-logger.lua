@@ -38,7 +38,7 @@ end
 function Logger:warn(...)
   log('WARN: ' .. Check.getMessage(self.prefix, ...))
 end
-function Logger:warn(...)
+function Logger:error(...)
   log('ERROR: ' .. Check.getMessage(self.prefix, ...))
 end
 
