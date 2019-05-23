@@ -16,7 +16,12 @@ local Protocol = {
 	EVENT_GROUP_ZONE_OPEN = 1,
 	EVENT_GROUP_ZONE_TAMPERED = 2,
 	EVENT_GROUP_ZONE_FIRE_LOOP_TROUBLE = 3,
-  }
+	EVENT_GROUP_NON_REPORTABLE = 4,
+	EVENT_GROUP_SPECIAL_EVENTS = 45,
+	EVENT_GROUP_UTILITY_KEY = 48,
+	EVENT_GROUP_STATUS_2 = 65,
+}
+
 function Prt3:new(object, name)
   -- create object if user does not provide one
   object = object or {}   
@@ -190,6 +195,34 @@ function Prt3:processEvent(eventGroup, eventNumber, areaNumber)
     return
   elseif ( eventGroup == Protocol.EVENT_GROUP_ZONE_FIRE_LOOP_TROUBLE ) then
     self:updateZoneStatus(eventNumber, 255)
+    return
+  elseif ( eventGroup == Protocol.EVENT_GROUP_NON_REPORTABLE ) then
+    if ( eventNumber == 7 ) then
+      self.logger:info('Remote access')
+    else
+	    self.logger:info('Non-reportable event %d %d', eventNumber, areaNumber)
+    end
+    return
+  elseif ( eventGroup == Protocol.EVENT_GROUP_SPECIAL_EVENTS ) then
+    if ( eventNumber == 4 ) then
+      self.logger:info('Winload connected')
+    else
+      self.logger:info('Special event %d %d', eventNumber, areaNumber)
+    end
+    return
+  elseif ( eventGroup == Protocol.EVENT_GROUP_UTILITY_KEY ) then
+    self.logger:info('Utility key %d', eventNumber)
+    return
+  elseif ( eventGroup == Protocol.EVENT_GROUP_STATUS_2 ) then
+    local partition = tostring(eventNumber)
+    if ( partition == '0' ) then
+      partition = 'All'
+    end
+    if ( areaNumber == 0 ) then
+      self.logger:info('Partition %s ready', partition)
+    else
+      self.logger:info('Partition %s event %d', partition, areaNumber)
+    end
     return
   end
   self.logger:warn('Unknown event %d %d %d', eventGroup, eventNumber, areaNumber)

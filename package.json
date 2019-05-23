@@ -4,7 +4,8 @@
   "description": "Lua user-libraries for the CBus 5500SHAC automation controller",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "extract:latest-download": "ts-node tools/ExtractScripts.ts"
   },
   "repository": {
     "type": "git",
@@ -26,6 +27,8 @@
     "minimist": "^1.2.0",
     "path": "^0.12.7",
     "tar": "^4.4.8",
+    "ts-node": "^8.1.0",
+    "typescript": "^3.4.5",
     "uuid": "^3.3.2",
     "winston": "^3.2.1"
   }
