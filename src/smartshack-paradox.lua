@@ -24,6 +24,7 @@ local Protocol = {
 
 function Prt3:new(object, name)
   -- create object if user does not provide one
+  name = name or 'Default'
   object = object or {}   
   setmetatable(object, self)
   self.__index = self
@@ -33,13 +34,28 @@ function Prt3:new(object, name)
   return object
 end
 
-function Prt3:sendCommand(name, command){
-  self.logger:info('sendCommand %s:%s', name, command)
-  local action = {
-    command,
-  }
+function Prt3:sendCommandUtilityKey(utilityKeyIndex) 
+  self.logger:info('sendCommandUtilityKey %d', utilityKeyIndex)
+  self:sendCommand(string.format('UK%03d', utilityKeyIndex))
+end
+
+function Prt3:sendCommandArmInstant(partitionIndex, password)
+  self.logger:info('sendCommandArmInstant %d', partitionIndex)
+  self:sendCommand(string.format('AA%03dI%s', partitionIndex, password))
+end
+
+function Prt3:sendCommandDisarmInstant(partitionIndex, password)
+  self.logger:info('sendCommandDisarmInstant %d', partitionIndex)
+  self:sendCommand(string.format('AD%03dI%s', partitionIndex, password))
+end
+
+function Prt3:sendCommand(command)
+  self.logger:info('sendCommand %s', command)
+  local action = {}
+  action.command = command
   self.channel:write(action)
-}
+end
+
 function Prt3:initialiseFirst(portPathPrefix, config)
   if ( not portPathPrefix ) then
     portPathPrefix = '/dev/ttyUSB'
@@ -137,7 +153,8 @@ function Prt3:addAction(action)
   if ( action.command ) then
     self:addWriteLineData(action.command)
   else
-    self.logger:error('unknown action')
+    self.logger:error('Unknown action')
+  	log('addAction',action)
   end
 end
 function Prt3:addReadData(data)
@@ -178,6 +195,10 @@ function Prt3:processReadLine(line)
   end
   if ( line:find('ZL')==1 ) then
     self:parseQueryZoneLabelResponse(line:sub(3))
+    return
+  end
+  if ( line:find('UK')==1 ) then
+    self.logger:warn('Utility Key confirmation received')
     return
   end
   self.logger:warn('Unknown line %d %s', line:len(), line)
