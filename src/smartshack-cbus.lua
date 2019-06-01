@@ -24,7 +24,20 @@ function Cbus.getCanonicalGa(cbusGa)
   elseif ( inputType == 'number' ) then
       returnValue = {0,56, cbusGa}
   elseif ( inputType == 'string' ) then
-    returnValue = {0,56, GetCBusGroupAddress(0, 56, cbusGa)}
+    local element
+    local elements = {}
+    for element in string.gmatch(cbusGa, '[^/]+') do
+      table.insert(elements, element)
+  	end
+    log('Found', elements)
+    Check.argument(#elements == 3, 'Invalid address (%d) %s', #elements, cbusGa)
+    local network = GetCBusNetworkAddress(elements[1])
+    Check.argument(network, 'Invalid network %s', elements[1])
+    local application = GetCBusApplicationAddress(network, elements[2])
+    Check.argument(network, 'Invalid application %s', elements[2])
+    local group = GetCBusGroupAddress(network, application, elements[3])
+    Check.argument(network, 'Invalid group %s', elements[3])
+    returnValue = {network, application, group}
   end
   return returnValue
 end
@@ -40,6 +53,20 @@ function Cbus.isEqualCbusGa(first, second)
   end
   return false
 end
+function Cbus.getLevelWithDefault(cbusGa, defaultValue)
+  Cbus.logger:trace('getLevelWithDefault %s %d', table.concat(cbusGa,'/'), defaultValue) 
+	local status, level
+  if ( cbusGa[2]==202 and cbusGa[1] == 0 ) then
+	  status, level = pcall(function () return GetTriggerLevel(cbusGa[3]) end )
+  else
+	  status, level = pcall(function () return GetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3]) end )
+  end
+  if ( status ) then
+    return level
+  end
+	return defaultValue
+end
+
 function Cbus.setLevel(cbusGa, level)
   Cbus.logger:debug('setLevel %s %d', table.concat(cbusGa,'/'), level) 
   if ( cbusGa[2]==202 and cbusGa[1] == 0 ) then
@@ -114,27 +141,47 @@ function Cbus.pulseMultipleAutoLevel(cbusGas, durationSeconds)
     Cbus.setLevelIfAutoLevel(cbusGa, 0)
   end
 end
-
-function Cbus.changeTriggerValue(triggerId, delta, minValue, maxValue, timeoutValue, timeoutSeconds)
-  local currentTrigger = GetTriggerLevel(triggerId)
-  Cbus.logger:debug('changeTriggerValue %d %d %d (%d-%d) %d after %d', triggerId, currentTrigger, delta, minValue, maxValue, timeoutValue, timeoutSeconds)
-  local numSeconds = 10
-  local nextTrigger = currentTrigger + delta
-  if ( currentTrigger == Cbus.TIMEOUT_LEVEL ) then
-    nextTrigger = timeoutValue
+function Cbus.getTriggerLevelWithDefault(triggerId, defaultValue)
+  Cbus.logger:trace('getTriggerLevel %d %d', triggerId, defaultValue) 
+	local status, level = pcall(function () return GetTriggerLevel(triggerId) end )
+  if ( status ) then
+    local value = GetCBusLevel(0,202,triggerId)
+    Cbus.logger:debug('getTriggerLevelWithDefault %d %d vs %d', triggerId, level, value)
+    return level
   end
-  if ( currentTrigger < minValue ) then
+	return defaultValue
+end
+function Cbus.changeTriggerValue(triggerId, delta, minValue, maxValue, firstValue, timeoutSeconds)
+  local currentTrigger = Cbus.getTriggerLevelWithDefault(triggerId, 0)
+  local offValue = 0
+  Cbus.logger:debug('changeTriggerValue %d %d %d (%d-%d) %d after %d', triggerId, currentTrigger, delta, minValue, maxValue, firstValue, timeoutSeconds)
+  local nextTrigger = currentTrigger + delta
+  Cbus.logger:debug('changeTriggerValue %d', nextTrigger)
+  -- Cycle around the world
+  if ( nextTrigger < minValue ) then
     nextTrigger = maxValue
   end
-  if ( currentTrigger > maxValue ) then
+  if ( nextTrigger > maxValue ) then
     nextTrigger = minValue
+  end
+  Cbus.logger:debug('changeTriggerValue %d %d %d %d', currentTrigger, nextTrigger, offValue, firstValue)
+  if ( currentTrigger == offValue ) then
+    nextTrigger = firstValue
+  else
+	  if ( nextTrigger == firstValue ) then
+  	  nextTrigger = offValue
+  	end
+  end
+  Cbus.logger:debug('changeTriggerValue %d', nextTrigger)
+  if ( currentTrigger == Cbus.TIMEOUT_LEVEL ) then
+    nextTrigger = offValue
   end
   Cbus.logger:debug('changeTriggerValue change %d', nextTrigger)
   SetTriggerLevel(triggerId,nextTrigger)
-  if ( nextTrigger ~= timeoutValue ) then
-    os.sleep(numSeconds)
+  if ( nextTrigger ~= offValue ) then
+    os.sleep(timeoutSeconds)
       --Check to see if we have changed during this time
-    currentTrigger = GetTriggerLevel(triggerId)
+    currentTrigger = Cbus.getTriggerLevelWithDefault(triggerId, 0)
     if ( currentTrigger == nextTrigger) then
       Cbus.logger:debug('toggleTrigger idle', nextTrigger)
       SetTriggerLevel(triggerId, Cbus.TIMEOUT_LEVEL)
