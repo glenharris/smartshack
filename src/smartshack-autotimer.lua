@@ -16,7 +16,7 @@ function AutoTimer:new()
   setmetatable(object, self)
   self.__index = self
   --object.logger:showTrace()
-  object.logger:showDebug()
+  --object.logger:showDebug()
   object.logger:showInfo()
   return object
 end
@@ -30,9 +30,16 @@ function AutoTimer.pushAutoOffCbusGa(cbusGa, timeSeconds)
   }
   AutoTimer.channel:write(action)  
 end
+function AutoTimer.cancelAutoOffCbusGa(cbusGa)
+  log(string.format('AutoTimer: cancelAutoOffCbusGa'))
+  local action = {
+    autoOffCbusGa = cbusGa,
+  }
+  AutoTimer.channel:write(action)  
+end
 
 function AutoTimer:runEventLoop(maxSeconds) 
-  self.logger:debug('runEventLoop %d', maxSeconds)
+  self.logger:debug('runEventLoop %d %d', maxSeconds, #self.actions)
   local startTime = os.time()
   local finishTime = startTime + maxSeconds
   while (true ) do
@@ -78,9 +85,10 @@ function AutoTimer:runEventLoop(maxSeconds)
 end
 
 function AutoTimer:processAction(action)
-  self.logger:debug('processAction %d %d', targetTime, os.time())
+  self.logger:trace('processAction %d %d', action.targetTime, os.time())
   if ( action.targetTime ) then
-    if ( action.targetTime <= os.time() ) then
+    local remainingTime = action.targetTime - os.time()
+    if ( remainingTime <= 0 ) then
       if ( action.autoOffCbusGa ) then
         self.logger:info('Turning off auto light')
         Cbus.setLevelIfAutoLevel(action.autoOffCbusGa, 0 )
@@ -89,7 +97,7 @@ function AutoTimer:processAction(action)
       end
       return true
     else
-      self.logger:debug('processAction not yet')
+      self.logger:debug('processAction not yet (%d)', remainingTime)
     end
   end
   return false
@@ -112,6 +120,7 @@ end
 function AutoTimer:removeAction(action)
   for index, localAction in ipairs(self.actions) do
     if ( localAction == action ) then
+      self.logger:info('Removing action')
       table.remove(self.actions, index)
       break
     end
@@ -131,14 +140,24 @@ function AutoTimer:addAction(action)
     end
   end
   if ( existingAction ) then
-    if ( existingAction.targetTime and action.targetTime ) then
-      if ( action.targetTime > existingAction.targetTime ) then
-        self.logger:info('Extending existing action')
+    if ( action.targetTime ) then
+      if ( existingAction.targetTime ) then
+        local deltaTime = action.targetTime - existingAction.targetTime
+        if ( deltaTime > 0 ) then
+          self.logger:info('Extending existing action %d', deltaTime)
+        end
+        if ( deltaTime < 0 ) then
+          self.logger:info('Shortening existing action %d', deltaTime)
+        end
         existingAction.targetTime = action.targetTime
         return
       end
+    else
+      self.logger:info('Removing existing action')
+      self:removeAction(existingAction)
     end
   else
+    self.logger:info('Inserting action')
     table.insert(self.actions, action)
   end
 end
