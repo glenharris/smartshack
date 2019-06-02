@@ -2,3 +2,6 @@
 /downloads/
 node_modules/
 /current/
+/temp-archive/
+/SmartShack-*.tar.gz
+/*.tar.gz

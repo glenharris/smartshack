@@ -1,11 +1,11 @@
 import * as FsExtra from 'fs-extra';
-import * as Winston from 'winston';
-import * as Path from 'path';
-import * as Uuid from 'uuid';
-import * as Tar from 'tar';
 import * as Minimist from 'minimist';
-import * as Process from 'process';
 import * as Os from 'os';
+import * as Path from 'path';
+import * as Process from 'process';
+import * as Tar from 'tar';
+import * as Uuid from 'uuid';
+import * as Winston from 'winston';
 
 const winston = Winston.createLogger({
     format: Winston.format.combine(
@@ -42,11 +42,11 @@ async function copyUserScripts(sourceFolder: string, destinationFolder: string):
     return returnValue;
 }
 
-async function saveOptionalScript(scriptData: any[], name: string, destinationFolder: string): Promise<string>{
-    let data = scriptData.find((localData)=>localData.type === name && localData.name === name);
-    if ( data){
+async function saveOptionalScript(scriptData: any[], name: string, destinationFolder: string): Promise<string> {
+    let data = scriptData.find((localData) => localData.type === name && localData.name === name);
+    if (data) {
         let luaText = data.script;
-        if ( luaText){
+        if (luaText) {
             await FsExtra.writeFile(Path.resolve(destinationFolder, `${name}.lua`), luaText);
             return name;
         }
@@ -55,6 +55,8 @@ async function saveOptionalScript(scriptData: any[], name: string, destinationFo
 async function copySpecialScripts(sourceFolder: string, destinationFolder: string): Promise<string[]> {
     const returnValue = [];
     const sourceFile = Path.resolve(sourceFolder, 'scripts.json');
+    const destinationFile = Path.resolve(destinationFolder, 'scripts.json');
+    await FsExtra.copy(sourceFile, destinationFile);
     const destinationSystemFolder = Path.resolve(destinationFolder, 'system');
     await FsExtra.ensureDir(destinationSystemFolder);
     const scriptData = await FsExtra.readJson(sourceFile);
@@ -65,11 +67,11 @@ async function copySpecialScripts(sourceFolder: string, destinationFolder: strin
             returnValue.push(`system/${script}`);
         }
     }
-    for ( let scriptType of ['resident', 'event']){
+    for (let scriptType of ['resident', 'event']) {
         const destinationTypeFolder = Path.resolve(destinationFolder, scriptType);
         await FsExtra.ensureDir(destinationTypeFolder);
-        for ( let data of scriptData){
-            if ( data.type === scriptType){
+        for (let data of scriptData) {
+            if (data.type === scriptType) {
                 let name = data.name;
                 name = name.replace(/([^a-z0-9 ]+)/gi, '-');
                 const scriptName = data.id;
@@ -103,18 +105,18 @@ async function extractScripts(argv) {
     if (argv._.length) {
         sourceFile = argv._[0];
     }
-    if ( !sourceFile){
+    if (!sourceFile) {
         const downloadFolder = Path.resolve(Os.homedir(), 'Downloads');
         let files = await FsExtra.readdir(downloadFolder);
-        files = files.filter((file)=>file.startsWith('Scripting-5500SHAC'));
+        files = files.filter((file) => file.startsWith('Scripting-5500SHAC'));
         files.sort();
         files.reverse();
-        if ( files.length){
+        if (files.length) {
             const recentFile = files[0];
             sourceFile = Path.resolve(downloadFolder, recentFile);
         }
     }
-    if ( !sourceFile){
+    if (!sourceFile) {
         sourceFile = 'downloads/current.tar.gz';
     }
     sourceFile = Path.resolve(sourceFile);
