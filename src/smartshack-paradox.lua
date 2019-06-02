@@ -108,6 +108,7 @@ function Prt3:dispose()
   end
 end
 function Prt3:runEventLoop(maxSeconds)
+  self.logger:debug('runEventLoop')
   Check.state(self.serialPort)
   local startSeconds = os.time()
   local readSeconds = 1
