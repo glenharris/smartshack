@@ -52,12 +52,12 @@ function SceneControl:new(cbusGa, options)
 end
 
 function SceneControl:nextLevel()
-  CBus.changeTriggerValue(self.cbusGa[3], 1, self.minLevel, self.maxLevel, self.startLevel, self.timeoutSeconds)
+  Cbus.changeTriggerValue(self.cbusGa[3], 1, self.minLevel, self.maxLevel, self.startLevel, self.timeoutSeconds)
 end
 
 function SceneControl:nextLevel2()
   local triggerId = self.cbusGa[3]
-  local currentLevel = CBus.getTriggerLevelWithDefault(triggerId, 0)
+  local currentLevel = Cbus.getTriggerLevelWithDefault(triggerId, 0)
   self.logger:debug('nextLevel %d %d', triggerId, currentLevel)
   local nowTime = os.time()
   local elapsedSeconds = nowTime - self.lastTime
