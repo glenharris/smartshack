@@ -41,6 +41,13 @@ function Cbus.getCanonicalGa(cbusGa)
   end
   return returnValue
 end
+function Cbus.getCanonicalGas(cbusGas)
+  local returnValue = {}
+  for  i, cbusGa in ipairs(cbusGas) do
+    returnValue[i] = Cbus.getCanonicalGa(cbusGa)
+  end
+  return returnValue
+end
 function Cbus.isEqualCbusGa(first, second)
   if ( first and second ) then
     if ( #first == 3 and #second == 3 ) then
