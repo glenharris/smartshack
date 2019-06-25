@@ -97,7 +97,7 @@ function PirPresence:new(lightCbusGas, options)
 end
 function PirPresence:processPirEvent(eventValue)
   PirPresence.logger:info('processPirEvent %d', eventValue)
-  if ( value == 0 ) then -- PIR inactive
+  if ( eventValue == 0 ) then -- PIR inactive
     pulseMultipleAutoLevel(self.lightCbusGas, self.durationSeconds)
   else
     cancelMultipleAutoOff(self.lightCbusGas)
@@ -139,7 +139,7 @@ function DoorClosedPresence:new(lightCbusGas, options)
 end
 function DoorClosedPresence:processDoorEvent(eventValue)
   DoorClosedPresence.logger:info('processDoorEvent %d', eventValue)
-  if ( value == 0 ) then -- Door closed
+  if ( eventValue == 0 ) then -- Door closed
     local durationSeconds = self.closedDurationSeconds or self.openDurationSeconds
     pulseMultipleAutoLevel(self.lightCbusGas, durationSeconds)
   else

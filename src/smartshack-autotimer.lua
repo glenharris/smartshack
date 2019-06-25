@@ -40,6 +40,11 @@ end
 
 function AutoTimer:runEventLoop(maxSeconds) 
   self.logger:debug('runEventLoop %d %d', maxSeconds, #self.actions)
+  if ( self.logger:isTrace() ) then
+    for index, action in ipairs(self.actions) do
+      self.logger:trace('action %d %d', index, action.targetTime)
+    end
+  end
   local startTime = os.time()
   local finishTime = startTime + maxSeconds
   while (true ) do
@@ -157,8 +162,12 @@ function AutoTimer:addAction(action)
       self:removeAction(existingAction)
     end
   else
-    self.logger:info('Inserting action')
-    table.insert(self.actions, action)
+    if ( action.targetTime ) then
+      self.logger:info('Inserting action')
+      table.insert(self.actions, action)
+    else
+      self.logger:debug('Ignoring missing delete')
+    end
   end
 end
 

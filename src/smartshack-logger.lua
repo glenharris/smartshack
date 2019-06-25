@@ -20,6 +20,12 @@ end
 function Logger:showTrace()
   self.level = 0
 end
+function Logger:isDebug()
+  return self.level <= 1
+end
+function Logger:isTrace()
+  return self.level <= 0
+end
 function Logger:trace(...)
   if ( self.level < 1 ) then
     log(Check.getMessage(self.prefix, ...))
