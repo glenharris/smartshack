@@ -1,6 +1,6 @@
 local Logger = require('user.smartshack-logger')
 local Check = require('user.smartshack-check')
-local CBus = require('user.smartshack-cbus')
+local Cbus = require('user.smartshack-cbus')
 
 function pulseMultipleAutoLevel(cbusGas, durationSeconds)
   log(string.format('pulseMultipleAutoLevel %d %d', #cbusGas, durationSeconds))
@@ -100,7 +100,7 @@ function PirPresence:processPirEvent(eventValue)
   if ( value == 0 ) then -- PIR inactive
     pulseMultipleAutoLevel(self.lightCbusGas, self.durationSeconds)
   else
-    cancelAutoOff(self.lightCbusGas)
+    cancelMultipleAutoOff(self.lightCbusGas)
     setMultipleAutoLevel(self.lightCbusGas)
   end
 end
