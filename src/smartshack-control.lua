@@ -151,12 +151,20 @@ end
 local BistableSwitch = {
   logger = Logger:new('BistableSwitch'),
 }
-function BistableSwitch:new(triggerId, options)
+function BistableSwitch:new(cbusGa, options)
   local object = {}   
   setmetatable(object, self)
   self.__index = self
-  self.triggerId = triggerId
-  self.maxValue = options.maxValue
+  self.cbusGa = cbusGa
+  Check.argument(cbusGa[1] == 0, 'Must be default network (%d)', cbusGa[1])
+  Check.argument(cbusGa[2] == 202, 'Must be trigger application (%d)', cbusGa[2])
+  self.triggerId = cbusGa[3]
+  self.maxLevel = options.maxLevel
+  Check.argument(self.maxLevel, 'Must define maxLevel')
+  self.minLevel = options.minLevel or 0
+  self.startLevel = options.startLevel or 1
+  self.timeoutSeconds = options.timeoutSeconds or 10
+  self.lastTime = 0
   return object
 end
 function BistableSwitch:processSwitchEvent(eventValue)
@@ -171,11 +179,20 @@ function BistableSwitch:processSwitchEvent(eventValue)
     -- Remember the last value
     SetTriggerLevel(self.triggerId, triggerLevel + 100)
   else
+    local nowTime = os.time()
     triggerLevel = triggerLevel + 1
-    if ( triggerLevel > self.maxValue ) then
-      triggerLevel = 1
+    if ( self.timeoutSeconds ) then
+        local elapsedSeconds = nowTime - self.lastTime
+        if ( elapsedSeconds > self.timeoutSeconds) then
+            self.logger:info('Resetting')
+            triggerLevel = self.startLevel
+        end
+    end
+    if ( triggerLevel > self.maxLevel ) then
+      triggerLevel = self.minLevel
     end
     SetTriggerLevel(self.triggerId, triggerLevel)
+    self.lastTime = nowTime
   end
 end
 
