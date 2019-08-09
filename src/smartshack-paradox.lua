@@ -145,10 +145,12 @@ function Prt3:runEventLoop(maxSeconds)
         self.logger:trace('timeout')
       else
         self.logger:error('read error', err)
+        return false
       end
     end
 	end
   self.logger:trace('done')
+  return true
 end
 function Prt3:addAction(action)
   if ( action.command ) then
