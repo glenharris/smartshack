@@ -3,7 +3,16 @@ local Control = require('user.smartshack-control')
 local Cbus = require('user.smartshack-cbus')
 local Cache = require('user.smartshack-cache')
 local AutoTimer = require('user.smartshack-autotimer')
- 
+local Paradox = require('user.smartshack-paradox')
+local Check = require('user.smartshack-check')
+
+local ParadoxPrt3 = Paradox.Prt3
+local paradox = ParadoxPrt3:new()
+
+function triggerParadoxUtilityKey(key)
+  log(string.format('triggerParadoxUtilityKey %d', key))
+  paradox:sendCommandUtilityKey(key)
+end
 function pulseMultipleAutoLevel(cbusGas, durationSeconds)
   log(string.format('pulseMultipleAutoLevel %d %d', #cbusGas, durationSeconds))
   -- Switch on, only if off or in autolevel
@@ -38,10 +47,30 @@ function securityPirPresenceLight(event, lights, durationSeconds)
   if ( value == 0 ) then -- PIR inactive
     pulseMultipleAutoLevel(lights, durationSeconds)
   else
-    cancelAutoOff(lights)
+    cancelMultipleAutoOff(lights)
     setMultipleAutoLevel(lights)
   end
 end
+function securityPirPresenceLightEntertain(event, lights, options)
+  local entertainMode = GetTriggerLevel(20)
+  local value = event.getvalue()
+  if ( entertainMode ~= 0 ) then
+    if ( value == 0 ) then
+	    log(string.format('securityPirPresenceLightEntertain ignoring %s %s', event.dst, value))
+  	  return
+    end
+  end
+  log(string.format('securityPirPresenceLightEntertain %s %s', event.dst, value))
+  local control = Cache.getOptionalItem('PirPresence', event.dst)
+  if ( not control ) then
+    log(string.format('create %s %s', event.dst, triggerName))
+    local lightCbusGas = Cbus.getCanonicalGas(lights)
+    control = Control.PirPresence:new(lightCbusGas, options)
+    Cache.setItem('PirPresence', event.dst, control)
+  end
+  control:processPirEvent(value)
+end
+
 function securityDoorRoomOpenLight(event, lights, durationSeconds)
   -- Used for a wine cellar - keep the light on, only for as long as the door is open, off when the door closes
   local value = event.getvalue()
@@ -66,7 +95,7 @@ end
 
 function nextTriggerValue(event, triggerId, maxValue) 
   log(string.format('nextTriggerValue %s %d %d', event.dst, triggerId, maxValue))
-  Cbus.changeTriggerValue( triggerId, 1, 0, maxValue, 0, 10)
+  Cbus.changeTriggerValue( triggerId, 1, 0, maxValue, 1, 10)
 end
 function nextSceneLevel(event, triggerName, options) 
   log(string.format('nextSceneLevel %s %s', event.dst, triggerName))
@@ -78,6 +107,35 @@ function nextSceneLevel(event, triggerName, options)
     Cache.setItem('Scene', triggerName, control)
   end
   control:nextLevel()
+end
+function setTriggerLevelFromEvent(event, triggerName, onLevel)
+  local cbusGa = Cbus.getCanonicalGa(triggerName)
+  Check.argument(cbusGa[1] == 0, 'Must be default network (%d)', cbusGa[1])
+  Check.argument(cbusGa[2] == 202, 'Must be trigger application (%d)', cbusGa[2])
+  local triggerId = cbusGa[3]
+  local eventValue = event.getvalue()
+  if ( eventValue ~= 0 ) then
+    if ( onLevel ) then
+	    eventValue = onLevel
+    end
+  end
+  log(string.format('setTriggerLevelFromEvent %s %d %d', event.dst, event.getvalue(), eventValue))
+  SetTriggerLevel(triggerId, eventValue)
+end
+function bistableNextTriggerValueNew(event, triggerName, options) 
+  log(string.format('bistableNextTriggerValueNew %s %s', event.dst, triggerName))
+  local control = Cache.getOptionalItem('BistableSwitch', triggerName)
+  if ( not control ) then
+    log(string.format('create %s %s', event.dst, triggerName))
+    local cbusGa = Cbus.getCanonicalGa(triggerName)
+    control = Control.BistableSwitch:new(cbusGa, options)
+    Cache.setItem('BistableSwitch', triggerName, control)
+    local test = Cache.getOptionalItem('BistableSwitch', triggerName)
+    if ( not test ) then
+      log('hello')
+    end
+  end
+  control:processSwitchEvent(event.getvalue())
 end
 function bistableNextTriggerValue(event, triggerId, maxValue) 
   log(string.format('bistableNextTriggerValue %s %d %d', event.dst, triggerId, maxValue))
@@ -100,11 +158,102 @@ function bistableNextTriggerValue(event, triggerId, maxValue)
 end
 function bistableSwitch(event, cbusGa) 
   local value = event.getvalue()
-  log(string.format('bistableSwitch %s %d %d', event.dst, table.concat(cbusGa,'/')))
+  log(string.format('bistableSwitch %s %s', event.dst, table.concat(cbusGa,'/')))
   Cbus.setLevel( cbusGa, value)
 end
 
--- Colors
+--[[
+
+function updateTrigger(triggerId, value, maxValue) 
+  log('updateTrigger', triggerId, value, maxValue)
+  local name = 'trigger-' .. tostring(triggerId)
+  local clockId = 'trigger-' .. tostring(triggerId) .. '-clock'
+  local newValue
+  local currentValue
+  if value == 0 then
+    newValue = 0
+  elseif value == 248 then
+    newValue = maxValue
+  elseif value == 100 then
+    -- Next value, with off in between each
+    currentValue = GetCBusLevel(0,202,triggerId)
+    if currentValue > 0 then
+      newValue = 0
+    else 
+      if checkClockGreaterThan(clockId, 10000) then
+        newValue = maxValue
+      else
+        local lastValue = storage.get(name .. '-value', 0)
+        newValue = lastValue - 1
+      end
+    end
+  elseif value == 10 then
+    -- Next value, without off in between each, but off when wrapping
+    if checkClockGreaterThan(clockId, 10000) then
+      newValue = maxValue
+    else
+      currentValue = GetTriggerLevel(triggerId)
+      newValue = currentValue - 1
+    end
+  elseif value == 210 then
+    -- Dummy stage in between levels from momentaries
+    return
+  end
+  if newValue ~= nil then
+    if newValue == -1 then
+      newValue = maxValue
+    end
+    if newValue < 0 then
+      log('updateTrigger clamp', newValue)
+      newValue = 0
+    end
+    if newValue > maxValue then
+      log('updateTrigger clamp', newValue, maxValue)
+      newValue = maxValue
+    end
+    log('updateTrigger setting', currentValue, newValue)
+    if newValue > 0 then
+      storage.set(name .. '-value', newValue)
+    end
+    SetTriggerLevel(triggerId,newValue)
+    log('updateTrigger final', GetTriggerLevel(triggerId))
+    updateClock(clockId)
+  else
+    log('updateTrigger unknown', value) 
+  end
+end
+
+function toggleTrigger(triggerId, value, maxValue) 
+  local currentTrigger = GetTriggerLevel(triggerId)
+  local numSeconds = 10
+  log('toggleTrigger', triggerId, value, currentTrigger, maxValue)
+  local nextTrigger = 0
+  if ( currentTrigger < maxValue ) then
+    nextTrigger = currentTrigger + 1
+  end
+  -- Havent timed out, so move to next state
+  if ( nextTrigger > 0 ) then
+    log('toggleTrigger pulse', nextTrigger)
+    SetTriggerLevel(triggerId,nextTrigger)
+    sleep(numSeconds)
+    currentTrigger = GetTriggerLevel(triggerId)
+    if ( currentTrigger == nextTrigger) then
+      log('toggleTrigger idle', nextTrigger)
+      SetTriggerLevel(triggerId, 255)
+    end
+  else
+    -- Was on, now need to set off
+    log('toggleTrigger off')
+    SetTriggerLevel(triggerId, nextTrigger, 0)
+  end  
+  log('toggleTrigger2 done')
+end
+function updateGroup(applicationId, groupId, value) 
+  --log('updateGroup', applicationId, groupId, value)
+  -- Set application 56 group 1 on the local network to full brightness over 12 seconds.
+  SetCBusLevel(0, applicationId, groupId, value, 0)
+end
+--]]
 local COLORS = {};
 COLORS[1]={255,0,0}
 COLORS[2]={0,255,0}
@@ -134,6 +283,24 @@ function updateGroupColor(networkId, applicationId, groupIds, color)
   SetCBusLevel(0, applicationId, blueId, blueColor, 0)
   SetCBusLevel(0, applicationId, greenId, greenColor, 0)
 end
+--[[
+
+function updateClock(id)
+  storage.set(id, os.time())
+end
+
+function checkClockGreaterThan(id, thresholdSeconds)
+  local last = storage.get(id)
+  if last == nil then
+    return true
+  end
+  local now = os.time()
+  if now - last > thresholdSeconds then
+    return true
+  end
+  return false
+end
+--]]
 -- send an e-mail
 function mail(to, subject, message)
   -- make sure these settings are correct
