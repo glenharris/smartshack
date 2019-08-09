@@ -164,12 +164,11 @@ function BistableSwitch:new(cbusGa, options)
   self.minLevel = options.minLevel or 0
   self.startLevel = options.startLevel or 1
   self.timeoutSeconds = options.timeoutSeconds or 10
-  self.lastTime = 0
   return object
 end
 function BistableSwitch:processSwitchEvent(eventValue)
   BistableSwitch.logger:info('processSwitchEvent %d', eventValue)
-  local triggerLevel = GetTriggerLevel(self.triggerId)
+  local triggerLevel = Cbus.getTriggerLevelWithDefault(self.triggerId, 0)
   if ( triggerLevel > 100 ) then
     triggerLevel = triggerLevel - 100
   end
@@ -177,22 +176,21 @@ function BistableSwitch:processSwitchEvent(eventValue)
     -- Off
     SetTriggerLevel(self.triggerId, 0)
     -- Remember the last value
-    SetTriggerLevel(self.triggerId, triggerLevel + 100)
-  else
-    local nowTime = os.time()
-    triggerLevel = triggerLevel + 1
-    if ( self.timeoutSeconds ) then
-        local elapsedSeconds = nowTime - self.lastTime
-        if ( elapsedSeconds > self.timeoutSeconds) then
-            self.logger:info('Resetting')
-            triggerLevel = self.startLevel
-        end
+    local saveLevel = triggerLevel + 100
+    SetTriggerLevel(self.triggerId, saveLevel)
+    os.sleep(self.timeoutSeconds)
+    triggerLevel = GetTriggerLevel(self.triggerId)
+    if ( triggerLevel == saveLevel) then
+      -- No changes in the last while
+      self.logger:info('Resetting')
+      SetTriggerLevel(self.triggerId, self.startLevel + 100 -1)
     end
+  else
+    triggerLevel = triggerLevel + 1
     if ( triggerLevel > self.maxLevel ) then
       triggerLevel = self.minLevel
     end
     SetTriggerLevel(self.triggerId, triggerLevel)
-    self.lastTime = nowTime
   end
 end
 
