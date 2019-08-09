@@ -161,7 +161,7 @@ end
 function Cbus.changeTriggerValue(triggerId, delta, minValue, maxValue, firstValue, timeoutSeconds)
   local currentTrigger = Cbus.getTriggerLevelWithDefault(triggerId, 0)
   local offValue = 0
-  Cbus.logger:debug('changeTriggerValue %d %d %d (%d-%d) %d after %d', triggerId, currentTrigger, delta, minValue, maxValue, firstValue, timeoutSeconds)
+  Cbus.logger:debug('changeTriggerValue %d %d %d (%d-%d), start on %d after %ds', triggerId, currentTrigger, delta, minValue, maxValue, firstValue, timeoutSeconds)
   local nextTrigger = currentTrigger + delta
   Cbus.logger:debug('changeTriggerValue %d', nextTrigger)
   -- Cycle around the world
