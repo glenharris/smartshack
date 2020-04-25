@@ -35,20 +35,25 @@ function Prt3:new(object, name)
 end
 
 function Prt3:sendCommandUtilityKey(utilityKeyIndex) 
-  self.logger:info('sendCommandUtilityKey %d', utilityKeyIndex)
-  self:sendCommand(string.format('UK%03d', utilityKeyIndex))
-end
-
-function Prt3:sendCommandArmInstant(partitionIndex, password)
-  self.logger:info('sendCommandArmInstant %d', partitionIndex)
-  self:sendCommand(string.format('AA%03dI%s', partitionIndex, password))
-end
-
-function Prt3:sendCommandDisarmInstant(partitionIndex, password)
-  self.logger:info('sendCommandDisarmInstant %d', partitionIndex)
-  self:sendCommand(string.format('AD%03dI%s', partitionIndex, password))
-end
-
+    self.logger:info('sendCommandUtilityKey %d', utilityKeyIndex)
+    self:sendCommand(string.format('UK%03d', utilityKeyIndex))
+  end
+  
+  function Prt3:sendCommandArmInstant(partitionIndex, password)
+    self.logger:info('sendCommandArmInstant %d', partitionIndex)
+    self:sendCommand(string.format('AA%03dI%s', partitionIndex, password))
+  end
+  
+  function Prt3:sendCommandArmQuickInstant(partitionIndex)
+    self.logger:info('sendCommandArmInstant %d', partitionIndex)
+    self:sendCommand(string.format('AQ%03dI', partitionIndex))
+  end
+  
+  function Prt3:sendCommandDisarmInstant(partitionIndex, password)
+    self.logger:info('sendCommandDisarmInstant %d', partitionIndex)
+    self:sendCommand(string.format('AD%03d%s', partitionIndex, password))
+  end
+  
 function Prt3:sendCommand(command)
   self.logger:info('sendCommand %s', command)
   local action = {}
