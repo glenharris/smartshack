@@ -73,7 +73,53 @@ function securityDoorRoomClosedLight(event, lights, durationClosedSeconds, durat
     pulseMultipleAutoLevel(lights, durationSeconds)
   end 
 end
-
+function securitySystemControl(event)
+  local value = event.getvalue()
+  log(string.format('securitySystemControl %d', value))
+  local context = storage.get('securitySystemControlContext')
+  local newContext
+  if ( value >= 32 and value <= 126 ) then
+    local char = string.char(value)
+	  log(string.format('securitySystemControl %s', value))
+    if ( not context ) then
+      context = ''
+    end
+    newContext = context .. char
+  else
+	  local Paradox = require('user.smartshack-paradox')
+  	local ParadoxPrt3 = Paradox.Prt3
+		local paradox = ParadoxPrt3:new()
+    if ( value == 0 ) then
+      -- Do nothing, used by bell-press reset
+    elseif ( value == 200 ) then
+      log(string.format('securitySystemControl resetting context'))
+      newContext = ''
+    elseif ( value >= 1 and value <= 6 ) then
+      local utilityKey = value
+			paradox:sendCommandUtilityKey(utilityKey)    
+    elseif ( value >= 11 and value <= 16 ) then
+      log(string.format('securitySystemControl arming'))
+      local partitionIndex = value - 10
+      paradox:sendCommandArmInstant(partitionIndex, context)
+    elseif ( value >= 21 and value <= 26 ) then
+      log(string.format('securitySystemControl disarming'))
+      local partitionIndex = value - 20
+      paradox:sendCommandDisarmInstant(partitionIndex, context)
+    elseif ( value == 211 ) then
+      log(string.format('securitySystemControl arming'))
+      paradox:sendCommandArmInstant(1, '2522')
+    elseif ( value == 221 ) then
+      log(string.format('securitySystemControl arming'))
+      paradox:sendCommandDisarmInstant(1, '2522')
+    else
+      log(string.format('securitySystemControl unknown command %d', value))
+    end
+  end
+  if ( newContext ) then
+    log(string.format('securitySystemControl updating context %s', newContext))
+    storage.set('securitySystemControlContext',newContext)
+  end
+end
 function nextTriggerValue(event, triggerId, maxValue) 
   log(string.format('nextTriggerValue %s %d %d', event.dst, triggerId, maxValue))
   Cbus.changeTriggerValue( triggerId, 1, 0, maxValue, 0, 10)
@@ -98,7 +144,6 @@ function bistableNextTriggerValue(event, triggerId, maxValue)
   end
   if ( value == 0 ) then
     SetTriggerLevel(triggerId, 0)
-    -- Remember the last value
     SetTriggerLevel(triggerId, triggerLevel + 100)
   else
     triggerLevel = triggerLevel + 1
