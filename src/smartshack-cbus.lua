@@ -73,6 +73,15 @@ function Cbus.getLevelWithDefault(cbusGa, defaultValue)
   end
 	return defaultValue
 end
+function Cbus.isAnyLevelNotEqual(cbusGas, targetLevel)
+  for index, cbusGa in ipairs(cbusGas) do
+    local level = Cbus.getLevelWithDefault(cbusGa, targetLevel)
+    if ( level ~= targetLevel) then
+      return true
+    end
+  end
+  return false
+end
 
 function Cbus.setLevel(cbusGa, level)
   Cbus.logger:debug('setLevel %s %d', table.concat(cbusGa,'/'), level) 

@@ -56,8 +56,37 @@ function securityPirPresenceLightEntertain(event, lights, options)
   local value = event.getvalue()
   if ( entertainMode ~= 0 ) then
     if ( value == 0 ) then
+      -- Never turn the lights off if we are entertaining
 	    log(string.format('securityPirPresenceLightEntertain ignoring %s %s', event.dst, value))
   	  return
+    end
+    -- Turn the lights on so that people can see (will never be turned off)
+  end
+  log(string.format('securityPirPresenceLightEntertain %s %s', event.dst, value))
+  local control = Cache.getOptionalItem('PirPresence', event.dst)
+  if ( not control ) then
+    log(string.format('create %s %s', event.dst, triggerName))
+    local lightCbusGas = Cbus.getCanonicalGas(lights)
+    control = Control.PirPresence:new(lightCbusGas, options)
+    Cache.setItem('PirPresence', event.dst, control)
+  end
+  control:processPirEvent(value)
+end
+
+function securityPirPresenceLightEntertainTest(event, lights, testLights, options)
+  local entertainMode = GetTriggerLevel(20)
+  local value = event.getvalue()
+  if ( entertainMode ~= 0 ) then
+    if ( value == 0 ) then
+      -- Never turn the lights off if we are entertaining
+	    log(string.format('securityPirPresenceLightEntertain ignoring %s %s', event.dst, value))
+  	  return
+    end
+    local lightCbusGas = Cbus.getCanonicalGas(testLights)
+    local shouldIgnore = Cbus.isAnyLevelNotEqual(lightCbusGas, 0)
+    if ( shouldIgnore ) then
+      log(string.format('securityPirPresenceLightEntertain ignoring %s (%s lights)', event.dst, #testLights))
+      return
     end
   end
   log(string.format('securityPirPresenceLightEntertain %s %s', event.dst, value))
@@ -258,7 +287,7 @@ local COLORS = {};
 COLORS[1]={255,0,0}
 COLORS[2]={0,255,0}
 COLORS[3]={0,0,255}
-COLORS[4]={255,69,0}
+COLORS[4]={255,192,0}
 COLORS[5]={167,0,255}
 local COLOR_NAMES = {"red", "green", "blue", "orange", "purple"}
 for i, name in ipairs(COLOR_NAMES) do
