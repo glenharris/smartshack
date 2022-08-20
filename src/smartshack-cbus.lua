@@ -106,9 +106,9 @@ function Cbus.setAutoLevel(cbusGa)
   Cbus.logger:debug('setAutoLevel %s', table.concat(cbusGa,'/')) 
   SetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3],Cbus.AUTO_LEVEL,0)
 end
-function Cbus.setAutoLevelIfAutoLevel(cbusGa, testLevel)
-  Cbus.logger:debug('setAutoLevelIfAutoLevel %s', table.concat(cbusGa,'/'))
-  local currentLevel = GetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3])
+function Cbus.setAutoLevelIfAutoLevelOrLevel(cbusGa, testLevel)
+  Cbus.logger:debug('setAutoLevelIfAutoLevelOrLevel %s', table.concat(cbusGa,'/'))
+  local currentLevel = Cbus.getLevelWithDefault(cbusGa,0)
   local isMatch = false
   local isAutoLevel = false
   if ( currentLevel) then
@@ -123,13 +123,16 @@ function Cbus.setAutoLevelIfAutoLevel(cbusGa, testLevel)
     Cbus.setLevel(cbusGa,Cbus.AUTO_LEVEL)
     isAutoLevel = true
   else
-	  Cbus.logger:debug('setAutoLevelIfAutoLevel ignoring %s %d %s', table.concat(cbusGa,'/'), currentLevel, testLevel) 
+	  Cbus.logger:debug('setAutoLevelIfAutoLevelOrLevel ignoring %s %d %s', table.concat(cbusGa,'/'), currentLevel, testLevel) 
   end
   return isAutoLevel
 end
-function Cbus.setLevelIfAutoLevel(cbusGa, level, testLevel)
-  Cbus.logger:debug('setLevelIfAutoLevel %s %d', table.concat(cbusGa,'/'), level)
-  local currentLevel = GetCBusLevel(cbusGa[1],cbusGa[2],cbusGa[3])
+function Cbus.setAutoLevelIfAutoLevel(cbusGa, testLevel)
+  return Cbus.setAutoLevelIfAutoLevelOrLevel(cbusGa, testLevel)
+end
+function Cbus.setLevelIfAutoLevelOrLevel(cbusGa, level, testLevel)
+  Cbus.logger:debug('setLevelIfAutoLevelOrLevel %s %d', table.concat(cbusGa,'/'), level)
+  local currentLevel = Cbus.getLevelWithDefault(cbusGa,0)
   local isMatch = false
   if ( currentLevel) then
     if ( currentLevel == Cbus.AUTO_LEVEL ) then
@@ -141,9 +144,12 @@ function Cbus.setLevelIfAutoLevel(cbusGa, level, testLevel)
   if ( isMatch ) then
     Cbus.setLevel(cbusGa,level)
   else
-	  Cbus.logger:debug('setLevelIfAutoLevel ignoring %s %d %s', table.concat(cbusGa,'/'), currentLevel, testLevel) 
+	  Cbus.logger:debug('setLevelIfAutoLevelOrLevel ignoring %s %d %s', table.concat(cbusGa,'/'), currentLevel, testLevel) 
   end
   return isMatch
+end
+function Cbus.setLevelIfAutoLevel(cbusGa, level, testLevel)
+  return Cbus.setLevelIfAutoLevelOrLevel(cbusGa, level, testLevel)
 end
 
 function Cbus.pulseMultipleAutoLevel(cbusGas, durationSeconds)
