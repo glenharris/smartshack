@@ -22,6 +22,15 @@ local Protocol = {
 	EVENT_GROUP_STATUS_2 = 65,
 }
 
+local Status = {
+  NOT_INITIALISED = 0,
+  INITIALISED = 1,
+  DISPOSED = 2,
+  READ_DATA = 3,
+  READ_TIMEOUT = 4,
+  READ_ERROR = 5,
+}
+
 function Prt3:new(object, name)
   -- create object if user does not provide one
   name = name or 'Default'
@@ -31,6 +40,7 @@ function Prt3:new(object, name)
   self.logger = Logger:new('PRT3')
   self.logger:showInfo()
   self.channel = Channel:new('PRT3:' .. name)
+  self.status = Status.NOT_INITIALISED
   return object
 end
 
@@ -94,6 +104,7 @@ function Prt3:initialise(portPath, config)
     return false
   end
   self.logger:info('opened %s', portPath)
+  self.status = Status.INITIALISED
   port:flush()
   self.logger:debug('flushed')
   self.serialPort = port
@@ -111,6 +122,7 @@ function Prt3:dispose()
     self.serialPort:close()
     self.serialPort = nil
   end
+  self.status = Status.DISPOSED
 end
 function Prt3:runEventLoop(maxSeconds)
   self.logger:debug('runEventLoop')
@@ -139,6 +151,10 @@ function Prt3:runEventLoop(maxSeconds)
     local data, err = self.serialPort:read(readBytes,readSeconds)
    	if data then
       self.logger:trace('read %s', data:len(), err)
+      if ( self.status ~= Status.READ_DATA and self.status ~= Status.TIMEOUT ) then 
+        self.logger:info('read data %s', data:len())
+      end
+		  self.status = Status.READ_DATA
       mustRead = true
       self:addReadData(data)
       while ( table.getn(self.readLines) > 0 ) do
@@ -147,9 +163,16 @@ function Prt3:runEventLoop(maxSeconds)
       end
     else
       if err == 'timeout' then
-        self.logger:trace('timeout')
+        if ( self.status ~= Status.READ_TIMEOUT ) then 
+	        self.logger:trace('timeout')
+        end
+			  self.status = Status.READ_TIMEOUT
       else
-        self.logger:error('read error', err)
+        self.logger:trace('read error %s', err)
+        if ( self.status ~= Status.READ_ERROR ) then 
+	        self.logger:error('read error %s', err)
+        end
+			  self.status = Status.READ_ERROR
         return false
       end
     end
@@ -258,7 +281,7 @@ function Prt3:processEvent(eventGroup, eventNumber, areaNumber)
 end
 function Prt3:updateZoneStatus(zoneIndex, value)
   Check.argument(zoneIndex>0)
-  self.logger:trace('updateZoneStatus %d %d', zoneIndex, value)
+  self.logger:info('updateZoneStatus %d %d', zoneIndex, value)
   local zone = self.config.zones[zoneIndex]
   if ( zone ) then
     if ( zone.shouldIgnore ) then
