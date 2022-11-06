@@ -5,6 +5,12 @@ local Cbus = require('user.smartshack-cbus')
 local Cache = require('user.smartshack-cache')
 local AutoTimer = require('user.smartshack-autotimer')
  
+function getCbusLevelWithDefault(cbusGa, defaultLevel)
+  return Cbus.getLevelWithDefault(cbusGa, defaultValue)
+end
+function getCbusTriggerLevelWithDefault(triggerGroup, defaultLevel)
+  return Cbus.getLevelWithDefault({0,202,triggerGroup}, defaultValue)
+end
 function pulseMultipleAutoLevel(cbusGas, durationSeconds)
   log(string.format('pulseMultipleAutoLevel %d %d', #cbusGas, durationSeconds))
   -- Switch on, only if off or in autolevel
@@ -33,6 +39,21 @@ function setMultipleLevel(cbusGas, level)
   end
 end
 
+function zoneActive(event, zoneGa, durationHours)
+  local value = event.getvalue()
+  log(string.format('zoneActive %s %d', event.dst, value))
+  if ( Cbus.setAutoLevelIfAutoLevel(zoneGa, 0) ) then
+	  local durationSeconds = durationHours * 60 * 60
+    AutoTimer.pushAutoOffCbusGa(zoneGa, durationSeconds)
+  end
+end
+
+function zoneInactive(event, zoneGa, durationDays)
+  local value = event.getvalue()
+  log(string.format('zoneActive %s %d', event.dst, value))
+  AutoTimer.cancelAutoOffCbusGa(zoneGa)
+end
+
 function securityPirPresenceLight(event, lights, durationSeconds)
   local value = event.getvalue()
   log(string.format('securityPirPresenceLight %s %d', event.dst, value))
@@ -59,6 +80,12 @@ function securityDoorRoomOpenLight(event, lights, durationSeconds)
     setMultipleLevel(lights, 0)
   else
     pulseMultipleAutoLevel(lights, durationSeconds)
+  end
+end
+function securityDoorRoomClosedLightNight(event, lights, durationClosedSeconds, durationOpenSeconds)
+  local isNight = Cbus.getLevelWithDefault({0,202,30},0)
+  if ( isNight > 0 ) then
+    securityDoorRoomClosedLight(event, lights, durationClosedSeconds, durationOpenSeconds)
   end
 end
 function securityDoorRoomClosedLight(event, lights, durationClosedSeconds, durationOpenSeconds)

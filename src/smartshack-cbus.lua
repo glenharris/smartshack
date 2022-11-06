@@ -6,6 +6,8 @@ local Cbus = {
   AUTO_LEVEL = 254,
   TIMEOUT_LEVEL = 254,
 }
+Cbus.logger:showInfo()
+
 function Cbus.getCanonicalGa(cbusGa)
   local returnValue
   local inputType = type(cbusGa)
@@ -164,7 +166,7 @@ function Cbus.pulseMultipleAutoLevel(cbusGas, durationSeconds)
   end
 end
 function Cbus.getTriggerLevelWithDefault(triggerId, defaultValue)
-  Cbus.logger:trace('getTriggerLevel %d %d', triggerId, defaultValue) 
+  Cbus.logger:trace('getTriggerLevelWithDefault %d %d', triggerId, defaultValue) 
 	local status, level = pcall(function () return GetTriggerLevel(triggerId) end )
   if ( status ) then
     local value = GetCBusLevel(0,202,triggerId)

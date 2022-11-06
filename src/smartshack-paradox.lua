@@ -152,7 +152,7 @@ function Prt3:runEventLoop(maxSeconds)
    	if data then
       self.logger:trace('read %s', data:len(), err)
       if ( self.status ~= Status.READ_DATA and self.status ~= Status.TIMEOUT ) then 
-        self.logger:info('read data %s', data:len())
+        self.logger:info('read data %s %d', data:len(), self.status)
       end
 		  self.status = Status.READ_DATA
       mustRead = true
@@ -164,7 +164,7 @@ function Prt3:runEventLoop(maxSeconds)
     else
       if err == 'timeout' then
         if ( self.status ~= Status.READ_TIMEOUT ) then 
-	        self.logger:trace('timeout')
+          self.logger:info('timeout')
         end
 			  self.status = Status.READ_TIMEOUT
       else
@@ -281,7 +281,7 @@ function Prt3:processEvent(eventGroup, eventNumber, areaNumber)
 end
 function Prt3:updateZoneStatus(zoneIndex, value)
   Check.argument(zoneIndex>0)
-  self.logger:info('updateZoneStatus %d %d', zoneIndex, value)
+  self.logger:debug('updateZoneStatus %d %d', zoneIndex, value)
   local zone = self.config.zones[zoneIndex]
   if ( zone ) then
     if ( zone.shouldIgnore ) then
